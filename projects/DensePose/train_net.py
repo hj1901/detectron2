@@ -17,6 +17,7 @@ from detectron2.engine import DEFAULT_TIMEOUT, default_argument_parser, default_
 from detectron2.evaluation import verify_results
 from detectron2.utils.file_io import PathManager
 from detectron2.utils.logger import setup_logger
+from detectron2.utils.analysis import parameter_count_table
 
 from densepose import add_densepose_config
 from densepose.engine import Trainer
@@ -43,6 +44,7 @@ def main(args):
 
     if args.eval_only:
         model = Trainer.build_model(cfg)
+        print(parameter_count_table(model, max_depth=2))
         DensePoseCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
             cfg.MODEL.WEIGHTS, resume=args.resume
         )
@@ -53,6 +55,9 @@ def main(args):
             verify_results(cfg, res)
         return res
 
+    model = Trainer.build_model(cfg)
+    print(parameter_count_table(model, max_depth=2))
+    del model
     trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
     if cfg.TEST.AUG.ENABLED:

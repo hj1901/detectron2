@@ -33,23 +33,23 @@ class CocoDatasetInfo:
 DATASETS = [
     CocoDatasetInfo(
         name="densepose_coco_2014_train",
-        images_root="coco/train2014",
-        annotations_fpath="coco/annotations/densepose_train2014.json",
+        images_root="coco2014/train2014/train2014",
+        annotations_fpath="dp-annotations/annotations/densepose_coco_2014_train.json",
     ),
     CocoDatasetInfo(
         name="densepose_coco_2014_minival",
-        images_root="coco/val2014",
-        annotations_fpath="coco/annotations/densepose_minival2014.json",
+        images_root="coco2014/val2014/val2014",
+        annotations_fpath="dp-annotations/annotations/densepose_coco_2014_minival.json",
     ),
     CocoDatasetInfo(
         name="densepose_coco_2014_minival_100",
-        images_root="coco/val2014",
-        annotations_fpath="coco/annotations/densepose_minival2014_100.json",
+        images_root="coco2014/val2014/val2014",
+        annotations_fpath="dp-annotations/annotations/densepose_minival2014_100.json",
     ),
     CocoDatasetInfo(
         name="densepose_coco_2014_valminusminival",
-        images_root="coco/val2014",
-        annotations_fpath="coco/annotations/densepose_valminusminival2014.json",
+        images_root="coco2014/val2014/val2014",
+        annotations_fpath="dp-annotations/annotations/densepose_coco_2014_valminusminival.json",
     ),
     CocoDatasetInfo(
         name="densepose_coco_2014_train_cse",
