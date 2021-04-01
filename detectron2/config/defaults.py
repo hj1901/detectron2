@@ -496,6 +496,16 @@ _C.MODEL.RESNETS.DEFORM_MODULATED = False
 # Number of groups in deformable conv.
 _C.MODEL.RESNETS.DEFORM_NUM_GROUPS = 1
 
+# ---------------------------------------------------------------------------- #
+# EfficientNet
+# ---------------------------------------------------------------------------- #
+_C.MODEL.EFFICIENTNETS = CN()
+_C.MODEL.EFFICIENTNETS.NAME = "mobilenetv3_rw"
+_C.MODEL.EFFICIENTNETS.PRETRAINED = True
+_C.MODEL.EFFICIENTNETS.EXPORTABLE = False
+_C.MODEL.EFFICIENTNETS.SCRIPTABLE = False
+_C.MODEL.EFFICIENTNETS.OUT_FEATURES = []
+_C.MODEL.EFFICIENTNETS.NORM = "FrozenBN"
 
 # ---------------------------------------------------------------------------- #
 # Solver

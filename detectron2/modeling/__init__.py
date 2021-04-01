@@ -11,6 +11,8 @@ from .backbone import (
     build_backbone,
     build_resnet_backbone,
     make_stage,
+    build_efficientnet_backbone,
+    build_efficientnet_fpn_backbone,
 )
 from .meta_arch import (
     META_ARCH_REGISTRY,
