@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from detectron2.config import configurable
-from detectron2.layers import Conv2d, ShapeSpec, get_norm
+from detectron2.layers import Conv2d, ShapeSpec, get_norm, DepthwiseSeparableConv2d
 from detectron2.utils.registry import Registry
 
 __all__ = ["FastRCNNConvFCHead", "build_box_head", "ROI_BOX_HEAD_REGISTRY"]
@@ -31,7 +31,8 @@ class FastRCNNConvFCHead(nn.Sequential):
 
     @configurable
     def __init__(
-        self, input_shape: ShapeSpec, *, conv_dims: List[int], fc_dims: List[int], conv_norm=""
+        self, input_shape: ShapeSpec, *, conv_dims: List[int], fc_dims: List[int], conv_norm="",
+        box_head_depthwise_convs=False, box_head_depthwise_double_activation=False,
     ):
         """
         NOTE: this interface is experimental.
@@ -50,15 +51,22 @@ class FastRCNNConvFCHead(nn.Sequential):
 
         self.conv_norm_relus = []
         for k, conv_dim in enumerate(conv_dims):
-            conv = Conv2d(
-                self._output_size[0],
-                conv_dim,
-                kernel_size=3,
-                padding=1,
-                bias=not conv_norm,
-                norm=get_norm(conv_norm, conv_dim),
-                activation=nn.ReLU(),
-            )
+            if box_head_depthwise_convs:
+                conv = DepthwiseSeparableConv2d(self._output_size[0], conv_dim, kernel_size=3, padding=1,
+                                                norm1=conv_norm if box_head_depthwise_double_activation else None,
+                                                activation1=nn.ReLU() if box_head_depthwise_double_activation else None,
+                                                norm2=conv_norm,
+                                                activation2=nn.ReLU())
+            else:
+                conv = Conv2d(
+                    self._output_size[0],
+                    conv_dim,
+                    kernel_size=3,
+                    padding=1,
+                    bias=not conv_norm,
+                    norm=get_norm(conv_norm, conv_dim),
+                    activation=nn.ReLU(),
+                )
             self.add_module("conv{}".format(k + 1), conv)
             self.conv_norm_relus.append(conv)
             self._output_size = (conv_dim, self._output_size[1], self._output_size[2])
@@ -74,7 +82,8 @@ class FastRCNNConvFCHead(nn.Sequential):
             self._output_size = fc_dim
 
         for layer in self.conv_norm_relus:
-            weight_init.c2_msra_fill(layer)
+            if not box_head_depthwise_convs:
+                weight_init.c2_msra_fill(layer)
         for layer in self.fcs:
             weight_init.c2_xavier_fill(layer)
 
@@ -87,6 +96,8 @@ class FastRCNNConvFCHead(nn.Sequential):
         return {
             "input_shape": input_shape,
             "conv_dims": [conv_dim] * num_conv,
+            "box_head_depthwise_convs": cfg.MODEL.ROI_BOX_HEAD.DEPTHWISE_CONV_HEAD,
+            "box_head_depthwise_double_activation": cfg.MODEL.ROI_BOX_HEAD.DEPTHWISE_CONV_DOUBLE_ACTIVATION,
             "fc_dims": [fc_dim] * num_fc,
             "conv_norm": cfg.MODEL.ROI_BOX_HEAD.NORM,
         }

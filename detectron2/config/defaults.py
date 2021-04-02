@@ -310,6 +310,9 @@ _C.MODEL.ROI_BOX_HEAD.NORM = ""
 _C.MODEL.ROI_BOX_HEAD.CLS_AGNOSTIC_BBOX_REG = False
 # If true, RoI heads use bounding boxes predicted by the box head rather than proposal boxes.
 _C.MODEL.ROI_BOX_HEAD.TRAIN_ON_PRED_BOXES = False
+# Depthwise Box Head
+_C.MODEL.ROI_BOX_HEAD.DEPTHWISE_CONV_HEAD = False
+_C.MODEL.ROI_BOX_HEAD.DEPTHWISE_CONV_DOUBLE_ACTIVATION = False
 
 # ---------------------------------------------------------------------------- #
 # Cascaded Box Head
