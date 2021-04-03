@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from detectron2.config import configurable
-from detectron2.layers import ShapeSpec, cat
+from detectron2.layers import ShapeSpec, cat, DepthwiseSeparableConv2d
 from detectron2.structures import Boxes, ImageList, Instances, pairwise_iou
 from detectron2.utils.events import get_event_storage
 from detectron2.utils.memory import retry_if_cuda_oom
@@ -73,7 +73,11 @@ class StandardRPNHead(nn.Module):
     """
 
     @configurable
-    def __init__(self, *, in_channels: int, num_anchors: int, box_dim: int = 4):
+    def __init__(self, *, in_channels: int, num_anchors: int, box_dim: int = 4,
+                 rpn_kernel_size: int = 3,
+                 depthwise_rpn: bool = False,
+                 depthwise_rpn_double_activation: bool = False,
+                 depthwise_rpn_norm: str = ''):
         """
         NOTE: this interface is experimental.
 
@@ -89,15 +93,30 @@ class StandardRPNHead(nn.Module):
         """
         super().__init__()
         # 3x3 conv for the hidden representation
-        self.conv = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
+        if depthwise_rpn:
+            self.conv = DepthwiseSeparableConv2d(in_channels, in_channels, kernel_size=rpn_kernel_size, padding=rpn_kernel_size//2,
+                                                 norm1=depthwise_rpn_norm if depthwise_rpn_double_activation else None,
+                                                 activation1=F.relu if depthwise_rpn_double_activation else None,
+                                                 norm2=depthwise_rpn_norm)
+        else:
+            self.conv = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
         # 1x1 conv for predicting objectness logits
         self.objectness_logits = nn.Conv2d(in_channels, num_anchors, kernel_size=1, stride=1)
         # 1x1 conv for predicting box2box transform deltas
         self.anchor_deltas = nn.Conv2d(in_channels, num_anchors * box_dim, kernel_size=1, stride=1)
 
-        for l in [self.conv, self.objectness_logits, self.anchor_deltas]:
+        for l in [self.objectness_logits, self.anchor_deltas]:
             nn.init.normal_(l.weight, std=0.01)
             nn.init.constant_(l.bias, 0)
+        if depthwise_rpn:
+            nn.init.normal_(self.conv.depthwise.weight, std=0.01)
+            nn.init.normal_(self.conv.pointwise.weight, std=0.01)
+            if depthwise_rpn_norm == '':
+                nn.init.constant_(self.conv.depthwise.bias, 0)
+                nn.init.constant_(self.conv.pointwise.bias, 0)
+        else:
+            nn.init.normal_(self.conv.weight, std=0.01)
+            nn.init.constant_(self.conv.bias, 0)
 
     @classmethod
     def from_config(cls, cfg, input_shape):
@@ -114,7 +133,11 @@ class StandardRPNHead(nn.Module):
         assert (
             len(set(num_anchors)) == 1
         ), "Each level must have the same number of anchors per spatial position"
-        return {"in_channels": in_channels, "num_anchors": num_anchors[0], "box_dim": box_dim}
+        return {"in_channels": in_channels, "num_anchors": num_anchors[0], "box_dim": box_dim,
+                "rpn_kernel_size": cfg.MODEL.RPN.KERNEL_SIZE,
+                "depthwise_rpn": cfg.MODEL.RPN.DEPTHWISE,
+                "depthwise_rpn_double_activation": cfg.MODEL.RPN.DEPTHWISE_DOUBLE_ACTIVATION,
+                "depthwise_rpn_norm": cfg.MODEL.RPN.DEPTHWISE_NORM}
 
     def forward(self, features: List[torch.Tensor]):
         """
