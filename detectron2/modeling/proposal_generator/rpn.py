@@ -96,7 +96,7 @@ class StandardRPNHead(nn.Module):
         if depthwise_rpn:
             self.conv = DepthwiseSeparableConv2d(in_channels, in_channels, kernel_size=rpn_kernel_size, padding=rpn_kernel_size//2,
                                                  norm1=depthwise_rpn_norm if depthwise_rpn_double_activation else None,
-                                                 activation1=F.relu if depthwise_rpn_double_activation else None,
+                                                 activation1=nn.ReLU() if depthwise_rpn_double_activation else None,
                                                  norm2=depthwise_rpn_norm)
         else:
             self.conv = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
@@ -109,10 +109,12 @@ class StandardRPNHead(nn.Module):
             nn.init.normal_(l.weight, std=0.01)
             nn.init.constant_(l.bias, 0)
         if depthwise_rpn:
-            nn.init.normal_(self.conv.depthwise.weight, std=0.01)
+            if not depthwise_rpn_double_activation:
+                nn.init.normal_(self.conv.depthwise.weight, std=0.01)
             nn.init.normal_(self.conv.pointwise.weight, std=0.01)
             if depthwise_rpn_norm == '':
-                nn.init.constant_(self.conv.depthwise.bias, 0)
+                if not depthwise_rpn_double_activation:
+                    nn.init.constant_(self.conv.depthwise.bias, 0)
                 nn.init.constant_(self.conv.pointwise.bias, 0)
         else:
             nn.init.normal_(self.conv.weight, std=0.01)
