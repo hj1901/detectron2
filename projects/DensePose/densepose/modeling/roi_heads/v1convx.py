@@ -5,7 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from detectron2.config import CfgNode
-from detectron2.layers import Conv2d
+from detectron2.layers import Conv2d, DepthwiseSeparableConv2d
 
 from ..utils import initialize_module_params
 from .registry import ROI_DENSEPOSE_HEAD_REGISTRY
@@ -30,16 +30,27 @@ class DensePoseV1ConvXHead(nn.Module):
         hidden_dim           = cfg.MODEL.ROI_DENSEPOSE_HEAD.CONV_HEAD_DIM
         kernel_size          = cfg.MODEL.ROI_DENSEPOSE_HEAD.CONV_HEAD_KERNEL
         self.n_stacked_convs = cfg.MODEL.ROI_DENSEPOSE_HEAD.NUM_STACKED_CONVS
+        self.depthwise_on    = cfg.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE.DEPTHWISE_ON
+        depthwise_norms = cfg.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE.NORMS
+        depthwise_activations= cfg.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE.ACTIVATIONS
         # fmt: on
         pad_size = kernel_size // 2
         n_channels = input_channels
         for i in range(self.n_stacked_convs):
-            layer = Conv2d(n_channels, hidden_dim, kernel_size, stride=1, padding=pad_size)
+            if self.depthwise_on:
+                layer = DepthwiseSeparableConv2d(n_channels, hidden_dim, kernel_size=kernel_size, padding=pad_size,
+                                                 norm1=depthwise_norms[0],
+                                                 activation1=nn.ReLU() if depthwise_activations[0] else None,
+                                                 norm2=depthwise_norms[1],
+                                                 activation2=nn.ReLU() if depthwise_activations[1] else None)
+            else:
+                layer = Conv2d(n_channels, hidden_dim, kernel_size, stride=1, padding=pad_size)
             layer_name = self._get_layer_name(i)
             self.add_module(layer_name, layer)  # pyre-ignore[16]
             n_channels = hidden_dim
         self.n_out_channels = n_channels
-        initialize_module_params(self)
+        if not self.depthwise_on:
+            initialize_module_params(self)
 
     def forward(self, features: torch.Tensor):
         """
@@ -55,7 +66,8 @@ class DensePoseV1ConvXHead(nn.Module):
         for i in range(self.n_stacked_convs):
             layer_name = self._get_layer_name(i)
             x = getattr(self, layer_name)(x)
-            x = F.relu(x)
+            if not self.depthwise_on:
+                x = F.relu(x)
             output = x
         return output
 

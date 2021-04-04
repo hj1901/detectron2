@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from detectron2.config import CfgNode
-from detectron2.layers import ConvTranspose2d, interpolate
+from detectron2.layers import ConvTranspose2d, interpolate, DepthwiseSeparableConvTranspose2d
 
 from ...structures import DensePoseChartPredictorOutput
 from ..utils import initialize_module_params
@@ -44,24 +44,43 @@ class DensePoseChartPredictor(nn.Module):
         n_segm_chan = cfg.MODEL.ROI_DENSEPOSE_HEAD.NUM_COARSE_SEGM_CHANNELS
         dim_out_patches = cfg.MODEL.ROI_DENSEPOSE_HEAD.NUM_PATCHES + 1
         kernel_size = cfg.MODEL.ROI_DENSEPOSE_HEAD.DECONV_KERNEL
-        # coarse segmentation
-        self.ann_index_lowres = ConvTranspose2d(
-            dim_in, n_segm_chan, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
-        )
-        # fine segmentation
-        self.index_uv_lowres = ConvTranspose2d(
-            dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
-        )
-        # U
-        self.u_lowres = ConvTranspose2d(
-            dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
-        )
-        # V
-        self.v_lowres = ConvTranspose2d(
-            dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
-        )
+        self.depthwise_on = cfg.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE_PREDICTOR.DEPTHWISE_ON
+        if self.depthwise_on:
+            # coarse segmentation
+            self.ann_index_lowres = DepthwiseSeparableConvTranspose2d(
+                dim_in, n_segm_chan, kernel_size, stride=2, padding=int(kernel_size / 2 - 1),
+            )
+            # fine segmentation
+            self.index_uv_lowres = DepthwiseSeparableConvTranspose2d(
+                dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1),
+            )
+            # U
+            self.u_lowres = DepthwiseSeparableConvTranspose2d(
+                dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1),
+            )
+            # V
+            self.v_lowres = DepthwiseSeparableConvTranspose2d(
+                dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1),
+            )
+        else:
+            # coarse segmentation
+            self.ann_index_lowres = ConvTranspose2d(
+                dim_in, n_segm_chan, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
+            )
+            # fine segmentation
+            self.index_uv_lowres = ConvTranspose2d(
+                dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
+            )
+            # U
+            self.u_lowres = ConvTranspose2d(
+                dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
+            )
+            # V
+            self.v_lowres = ConvTranspose2d(
+                dim_in, dim_out_patches, kernel_size, stride=2, padding=int(kernel_size / 2 - 1)
+            )
+            initialize_module_params(self)
         self.scale_factor = cfg.MODEL.ROI_DENSEPOSE_HEAD.UP_SCALE
-        initialize_module_params(self)
 
     def interp2d(self, tensor_nchw: torch.Tensor):
         """

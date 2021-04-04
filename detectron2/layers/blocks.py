@@ -5,7 +5,7 @@ import fvcore.nn.weight_init as weight_init
 from torch import nn
 
 from .batch_norm import FrozenBatchNorm2d, get_norm
-from .wrappers import Conv2d
+from .wrappers import Conv2d, ConvTranspose2d
 
 
 """
@@ -103,6 +103,41 @@ class DepthwiseSeparableConv2d(nn.Module):
             activation=activation2,
         )
 
+        # default initialization
+        weight_init.c2_msra_fill(self.depthwise)
+        weight_init.c2_msra_fill(self.pointwise)
+
+    def forward(self, x):
+        return self.pointwise(self.depthwise(x))
+
+
+class DepthwiseSeparableConvTranspose2d(nn.Module):
+    """
+    A kxk depthwise transpose convolution + a 1x1 convolution.
+    """
+
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=4,
+        stride=2,
+        padding=0,
+    ):
+        super().__init__()
+        self.depthwise = ConvTranspose2d(
+            in_channels,
+            in_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            groups=in_channels,
+        )
+        self.pointwise = Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+        )
         # default initialization
         weight_init.c2_msra_fill(self.depthwise)
         weight_init.c2_msra_fill(self.pointwise)

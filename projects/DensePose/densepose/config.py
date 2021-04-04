@@ -192,6 +192,14 @@ def add_densepose_head_config(cfg: CN):
     # - "indep_aniso": statistically independent residuals with anisotropic
     #    covariances
     _C.MODEL.ROI_DENSEPOSE_HEAD.UV_CONFIDENCE.TYPE = "iid_iso"
+    # Depthwise head
+    _C.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE_CONV_HEAD = False
+    _C.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE_CONV_DOUBLE_ACTIVATION = False
+    _C.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE_CONV_NORM = 'BN'
+    _C.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE = CN({"DEPTHWISE_ON": False,
+                                                "ACTIVATIONS": [False, True],
+                                                "NORMS": ['', 'BN']})
+    _C.MODEL.ROI_DENSEPOSE_HEAD.DEPTHWISE_PREDICTOR = CN({"DEPTHWISE_ON": False})
     # List of angles for rotation in data augmentation during training
     _C.INPUT.ROTATION_ANGLES = [0]
     _C.TEST.AUG.ROTATION_ANGLES = ()  # Rotation TTA

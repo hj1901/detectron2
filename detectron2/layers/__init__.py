@@ -16,7 +16,7 @@ from .wrappers import (
     nonzero_tuple,
     cross_entropy,
 )
-from .blocks import CNNBlockBase, DepthwiseSeparableConv2d
+from .blocks import CNNBlockBase, DepthwiseSeparableConv2d, DepthwiseSeparableConvTranspose2d
 from .aspp import ASPP
 
 __all__ = [k for k in globals().keys() if not k.startswith("_")]
